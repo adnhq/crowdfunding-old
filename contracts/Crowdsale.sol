@@ -27,8 +27,8 @@ contract Crowdsale{
     
     TokenContract token;
     address public owner;
-    address public factory;
-    address public tokenAddress;
+    address factory;
+    address tokenAddress;
     mapping(uint => Request) requests;
     enum State {RUNNING, PAUSED, ENDED}
     State currentState;
@@ -101,17 +101,17 @@ contract Crowdsale{
         emit Contribution(msg.sender, msg.value);
     }
     
-    function getTokenBalance() public view returns (uint){
+    function getTokenBalance() external view returns (uint){
         return token.balanceOf(msg.sender);
     }
 
-    function getRefund() public isContributor tokenHolder timeMet saleActive{
+    function getRefund() external isContributor tokenHolder timeMet {
         require(raisedAmount<targetAmount, "Target amount has been met");
         payable(msg.sender).transfer(contributedAmount[msg.sender]);
         contributedAmount[msg.sender] = 0;
     }
 
-    function makeRequest(string memory _description, uint _amount, address payable _recipient) public onlyOwner goalMet timeMet saleActive{
+    function makeRequest(string memory _description, uint _amount, address payable _recipient) external onlyOwner goalMet timeMet saleActive{
         Request storage newRequest = requests[reqCounter];
         newRequest.description = _description;
         newRequest.amount = _amount;
@@ -120,18 +120,18 @@ contract Crowdsale{
         emit RequestMade(_description, _amount, _recipient);
     }
 
-    function vote(uint _index) public tokenHolder goalMet timeMet saleActive{
+    function vote(uint _index) external tokenHolder saleActive{
         Request storage approveRequest = requests[_index];
         require(approveRequest.votes[msg.sender] == false);
         approveRequest.voteCount++;
         approveRequest.votes[msg.sender] = true;
     }
     
-    function tokensAvailable() public view returns (uint){
+    function tokensAvailable() external view returns (uint){
         return token.balanceOf(factory);
     }
     
-    function makePayment(uint _index) public onlyOwner goalMet timeMet saleActive{
+    function makePayment(uint _index) external onlyOwner saleActive{
         Request storage approveRequest = requests[_index];
         require(approveRequest.completed == false);
         require(approveRequest.voteCount >= contributors/2);
@@ -144,26 +144,26 @@ contract Crowdsale{
         token.transferFrom(factory, owner, token.balanceOf(factory));
     }
 
-    function pause() public onlyOwner saleActive{
+    function pause() external onlyOwner saleActive{
         currentState = State.PAUSED;
     }
 
-    function resume() public onlyOwner{
+    function resume() external onlyOwner{
         require(currentState == State.PAUSED);
         currentState = State.RUNNING;
     }
 
-    function endVote() public tokenHolder timeMet saleActive{
+    function endVote() external tokenHolder {
         require(requestEnd, "Voting for sale end has not started yet");
         endVotes++;
     }
 
-    function endRequest(string memory _reason) public onlyOwner timeMet saleActive{
+    function endRequest(string memory _reason) external onlyOwner timeMet saleActive{
         requestEnd = true;
         emit EndRequest(block.timestamp, _reason);
     }
 
-    function end() public onlyOwner {
+    function end() external onlyOwner {
         require(currentState != State.ENDED);
         require(endVotes > (contributors/2));
         payable(owner).transfer(address(this).balance);
